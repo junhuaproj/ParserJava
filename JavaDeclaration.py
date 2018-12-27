@@ -12,6 +12,18 @@ from antlr4 import *
 from JavaLexer import JavaLexer
 from JavaParser import JavaParser
 
+def IsMemberStatic(member):
+    #方法或函数是否静态，public,protected,private
+    #这里只处理static,影响JNI中取得methodid
+    modifiers=member.modifier()
+    if(modifiers==None):
+        return False
+    for m in modifiers:
+        m1=m.classOrInterfaceModifier()
+        if m1!=None and m.classOrInterfaceModifier().getText()=='static':
+            return True
+    return False
+
 class JavaDeclaration:
     def __init__(self,javapath):
         self.parseJava(javapath)
@@ -88,10 +100,14 @@ class JavaDeclaration:
         body=body.classBodyDeclaration()
         methods=[]
         for item in body:
-            method=item.memberDeclaration().methodDeclaration()
+            method=item.memberDeclaration();
+            if method==None:
+                continue
+            method=method.methodDeclaration()
             if method!=None:
                 #打印方法返回值类型，名称
                 m={}
+                m['static']=IsMemberStatic(item)
                 m['identifier']=method.IDENTIFIER().getText()
                 m['return']=method.typeTypeOrVoid().getText()
                 #print(method.typeTypeOrVoid().getText()+' '+method.IDENTIFIER().getText())
@@ -114,9 +130,12 @@ class JavaDeclaration:
         body=body.classBodyDeclaration()
         fields=[]
         for item in body:
-            field=item.memberDeclaration().fieldDeclaration()
+            field=item.memberDeclaration()
+            if field==None:
+                continue
+            field=field.fieldDeclaration()
             if field!=None:
-                fields.append({'type':field.typeType().getText(),'name':field.variableDeclarators().getText()})
+                fields.append({'type':field.typeType().getText(),'name':field.variableDeclarators().getText(),'static':IsMemberStatic(item)})
         if fields!=None:
             return fields
         return None
