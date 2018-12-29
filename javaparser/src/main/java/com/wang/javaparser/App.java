@@ -1,33 +1,15 @@
 package com.wang.javaparser;
 
-import java.io.FileInputStream;
+
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.antlr.v4.runtime.ANTLRInputStream;
-import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.Token;
 import org.antlr.v4.runtime.tree.ParseTree;
 
-import com.wang.JavaLexer;
-import com.wang.JavaParser;
-import com.wang.JavaParser.ClassBodyContext;
-import com.wang.JavaParser.ClassBodyDeclarationContext;
-import com.wang.JavaParser.ClassDeclarationContext;
-import com.wang.JavaParser.FieldDeclarationContext;
-import com.wang.JavaParser.FormalParameterContext;
-import com.wang.JavaParser.FormalParameterListContext;
-import com.wang.JavaParser.FormalParametersContext;
-import com.wang.JavaParser.ImportDeclarationContext;
-import com.wang.JavaParser.MemberDeclarationContext;
-import com.wang.JavaParser.MethodDeclarationContext;
-import com.wang.JavaParser.ModifierContext;
-import com.wang.JavaParser.PackageDeclarationContext;
-import com.wang.JavaParser.TypeDeclarationContext;
-import com.wang.JavaParser.VariableDeclaratorContext;
-import com.wang.JavaParser.VariableDeclaratorsContext;
+
 /**
  * java -Xmx500M -cp antlr-4.7.2-complete.jar org.antlr.v4.Tool -Dlanguage=Java -package com.wang JavaLexer.g4
  * java -Xmx500M -cp antlr-4.7.2-complete.jar org.antlr.v4.Tool -Dlanguage=Java -package com.wang JavaParser.g4
@@ -40,10 +22,10 @@ public class App
 {
     public static void main( String[] args )
     {
-    	String path="C:\\proj\\files\\javaparser\\App.java";
+    	//String path="C:\\proj\\files\\javaparser\\App.java";
     	App a=new App();
     	try {
-    		a.main(path);
+    		a.main();
     	}
     	catch(Exception e)
     	{
@@ -51,17 +33,17 @@ public class App
     	}
         System.out.println( "Hello World!" );
     }
-    public void main(String path) throws FileNotFoundException, IOException
+    public void main() throws FileNotFoundException, IOException
     {
     	//https://github.com/antlr/antlr4/blob/4.6/doc/listeners.md
     	//JavaCls j=ParserFile.ParseJava(path);
     	//System.out.println(j);
     	Parser p=new Parser();
-    	p.parseFolder("C:\\proj\\files\\javaparser\\javaparser\\src\\main\\java", true);
+    	p.parseFolder("C:\\proj\\files\\javaparser\\jnisample\\src\\main\\java", true);
     	ArrayList<String> clsNames=new ArrayList<String>();
-    	clsNames.add("JavaCls");
-    	clsNames.add("CppClass");
-    	p.createCFile(clsNames);
+    	clsNames.add("App");
+    	clsNames.add("AppInfo");
+    	p.createCFile(clsNames,"C:\\proj\\files\\javaparser\\out");
     	//ParseTree tree=getParseTree(path);
     	//AST ast=new AST(tree);
     	//System.out.println(ast);

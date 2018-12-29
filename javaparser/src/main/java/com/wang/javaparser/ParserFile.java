@@ -94,18 +94,19 @@ public class ParserFile {
     		MemberDeclarationContext member=c.memberDeclaration();
     		//printModifiers(c.modifier());
     		boolean isStatic=isStatic(c.modifier());
+    		boolean isPublic=isPublic(c.modifier());
     		if(member!=null) {
 	    		FieldDeclarationContext field=member.fieldDeclaration();
 	    		MethodDeclarationContext method=member.methodDeclaration();
 	    		if(field!=null)
-	    			parseField(isStatic,field);
+	    			parseField(isStatic,isPublic,field);
 	    		if(method!=null)
-	    			parseMethod(isStatic,method);
+	    			parseMethod(isStatic,isPublic,method);
     		}
     	}
     }
     //得到Java方法
-    public void parseMethod(boolean isStatic,MethodDeclarationContext method)
+    public void parseMethod(boolean isStatic,boolean isPublic,MethodDeclarationContext method)
     {
     	//System.out.println(method.typeTypeOrVoid().getText());
     	//System.out.println(method.IDENTIFIER().getText());
@@ -115,10 +116,14 @@ public class ParserFile {
     		jmethod.setRetType(method.typeTypeOrVoid().getText());
     	jmethod.setName(method.IDENTIFIER().getText());
     	jmethod.setStatic(isStatic);
+    	jmethod.setPublic(isPublic);
     	FormalParametersContext param= method.formalParameters();
     	FormalParameterListContext paramList=param.formalParameterList();
     	//如果没有参数就直接返回
-    	if(paramList==null)return ;
+    	if(paramList==null) {
+    		cls.getMethodList().add(jmethod);
+    		return ;
+    	}
     	List<JavaMember> jparamList=new ArrayList<JavaMember>();
     	List<FormalParameterContext> paramContext=paramList.formalParameter();
     	for(FormalParameterContext p:paramContext)
@@ -134,7 +139,7 @@ public class ParserFile {
     	cls.getMethodList().add(jmethod);
     }
     //解析字段
-    public void parseField(boolean isStatic,FieldDeclarationContext field)
+    public void parseField(boolean isStatic,boolean isPublic,FieldDeclarationContext field)
     {
     	//System.out.println(field.typeType().getText());
     	String type=field.typeType().getText();
@@ -146,6 +151,7 @@ public class ParserFile {
     		VariableDeclaratorIdContext  variableId=v.variableDeclaratorId();
     		m.setType(type);
     		m.setStatic(isStatic);
+    		m.setPublic(isPublic);
     		m.setName(variableId.IDENTIFIER().getText());
     		cls.getFieldList().add(m);
     		//System.out.println("identifier:"+v.variableDeclaratorId().IDENTIFIER().getText());
@@ -157,6 +163,15 @@ public class ParserFile {
     	if(modifiers==null)return false;
     	for(ModifierContext mc:modifiers) {
     		if(mc.getText().equals("static"))
+    			return true;
+    	}
+    	return false;
+    }
+    public boolean isPublic(List<ModifierContext> modifiers)
+    {
+    	if(modifiers==null)return false;
+    	for(ModifierContext mc:modifiers) {
+    		if(mc.getText().equals("public"))
     			return true;
     	}
     	return false;

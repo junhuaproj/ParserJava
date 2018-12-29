@@ -2,8 +2,16 @@ package com.wang.javaparser;
 
 public class JavaMember {
 	boolean isStatic;
+	boolean isPublic;
 	String type;
 	String name;
+	
+	public boolean isPublic() {
+		return isPublic;
+	}
+	public void setPublic(boolean isPublic) {
+		this.isPublic = isPublic;
+	}
 	public boolean isStatic() {
 		return isStatic;
 	}

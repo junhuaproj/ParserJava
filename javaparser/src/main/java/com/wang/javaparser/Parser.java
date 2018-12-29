@@ -30,18 +30,30 @@ public class Parser {
 		}
 		return true;
 	}
-	public void createCFile(ArrayList<String> clss)
+	public void createCFile(ArrayList<String> clss,String cppDir)
 	{
 		for(JavaCls c:_clss)
 		{
 			if(clss.contains(c.getCls()))
 			{
-				CppClass cpp=new CppClass(c,"J"+c.getCls()+"Bridge");
+				CppClass cpp=new CppClass(c,"J"+c.getCls()+"Bridge",this);
 				cpp.printIdDeclaration();
+				cpp.endHeader();
+				if(!cpp.save(cppDir)){
+					System.out.println("create cpp class "+c.getCls()+" failed");
+				}
 			}
 		}
 	}
-	
+	public String getFullClassName(String cls)
+	{
+		for(JavaCls c:_clss)
+		{
+			if(c.getCls().equals(cls))
+				return c.getPkg()+"."+cls;
+		}
+		return cls;
+	}
 	/*class JavaFilter implements FilenameFilter
 	{
 

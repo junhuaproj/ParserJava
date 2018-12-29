@@ -4,28 +4,69 @@
  * */
 package com.wang.javaparser;
 
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
 public class CppClass {
 	JavaCls jCls;
 	String cppName;//C++类名称
+	Parser parser;
 	ArrayList<String> cppHeaderContent;//头文件
 	ArrayList<String> cppSourceContent;//源文件
-	public CppClass(JavaCls cls,String cppName)
+	public CppClass(JavaCls cls,String cppName,Parser p)
 	{
+		parser=p;
 		jCls=cls;
 		this.cppName=cppName;
 		cppHeaderContent=new ArrayList<String>();
 		cppSourceContent=new ArrayList<String>();
 		beginHeader();
+		beginSource();
+	}
+	public boolean save(String dir)
+	{
+		String fileName=dir+"\\"+cppName+".h";
+		if(!writeToFile(cppHeaderContent,fileName))
+		{
+			return false;
+		}
+		fileName=dir+"\\"+cppName+".cpp";
+		if(!writeToFile(cppSourceContent,fileName))
+		{
+			return false;
+		}
+		return true;
+	}
+	public boolean writeToFile(ArrayList<String> arr,String fileName)
+	{
+		try {
+			FileOutputStream stream=new FileOutputStream(fileName);
+			final byte[] enter="\r\n".getBytes();
+			for(String s:arr)
+			{
+				stream.write(s.getBytes());
+				stream.write(enter);
+			}
+			stream.close();
+			return true;
+		} catch (FileNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		return false;
 	}
 	/**
 	 * 头文件开头部分的类定义
 	 * */
 	public void beginHeader()
 	{
-		cppHeaderContent.add("#pragram once");
+		cppHeaderContent.add("#pragma once");
 		cppHeaderContent.add("");
 		cppHeaderContent.add("#include <jni.h>");
 		cppHeaderContent.add("");
@@ -33,6 +74,15 @@ public class CppClass {
 		cppHeaderContent.add("{");
 		cppHeaderContent.add("public:");
 		cppHeaderContent.add("\t"+cppName+"(JNIEnv* e,jclass cls);");
+		cppHeaderContent.add("\tvirtual ~"+cppName+"();");
+		cppHeaderContent.add("\tvirtual BOOL Init();");
+		cppHeaderContent.add("protected:");
+		cppHeaderContent.add("\tJNIEnv* _e;");
+		cppHeaderContent.add("\tjclass _cls;");
+	}
+	public void endHeader()
+	{
+		cppHeaderContent.add("};");
 	}
 	/**
 	 * 源文件开头部分
@@ -41,7 +91,13 @@ public class CppClass {
 	{
 		cppSourceContent.add("#include \"stdafx.h\"");
 		cppSourceContent.add("#include \""+cppName+".h\"");
-		
+		//构造函数
+		cppSourceContent.add(cppName+"::"+cppName+"(JNIEnv* e,jclass cls):_e(e),_cls(cls)");
+		cppSourceContent.add("{");
+		cppSourceContent.add("}");
+		cppSourceContent.add(cppName+"::~"+cppName+"()");
+		cppSourceContent.add("{");
+		cppSourceContent.add("}");
 	}
 	/**
 	 * 从类变量名称定义fiedId,加前缀_f,并把首字母大写
@@ -61,6 +117,13 @@ public class CppClass {
 		String s="_m"+identifier.substring(0, 1).toUpperCase();
 		if(identifier.length()>1)
 			s+=identifier.substring(1);
+		return s;
+	}
+	public String getMdName(String publicMdName)
+	{
+		String s=publicMdName.substring(0, 1).toUpperCase();
+		if(publicMdName.length()>1)
+			s+=publicMdName.substring(1);
 		return s;
 	}
 	/**
@@ -105,6 +168,10 @@ public class CppClass {
 		{
 			//如果是类，把.换成/
 			jType=jCls.getFullType(jType);
+			if(!jType.contains("."))
+			{//如果不是import的，可能是当前代码下的包
+				jType=parser.getFullClassName(jType);
+			}
 			jType=jType.replace('.','/');
 			//类的开头加"L",末尾加";"
 			jType="L"+jType;
@@ -138,50 +205,159 @@ public class CppClass {
 		s+=getVariableCSign(method.getRetType());
 		return s;
 	}
+	/**
+	 * 转成CPP类代码
+	 * */
 	public void printIdDeclaration()
 	{
 		List<JavaMember> fieldList=jCls.getFieldList();
+		cppSourceContent.add("BOOL "+cppName+"::Init(){");
 		if(fieldList!=null)
 		{
-			System.out.println("protected://field");
-			cppHeaderContent.add("protected://field");
+			//System.out.println("protected://field");
+			cppHeaderContent.add("protected: //field");
 			for(JavaMember j:fieldList)
 			{
 				String fieldId=getFieldId(j.getName());
 				//id 定义
-				cppHeaderContent.add("\tjfieldID\t"+fieldId);
+				cppHeaderContent.add("\tjfieldID\t"+fieldId+";");
 				//得到field方法
-				String gid=String.format("\t%s=_e->%s(_cls,\"%s\",\"%s\")",fieldId,
+				String gid=String.format("\t%s=_e->%s(_cls,\"%s\",\"%s\");",fieldId,
 						j.isStatic?"GetStaticFieldID":"GetFieldID",
-						fieldId,getVariableCSign(j.getType()));
+								j.getName(),getVariableCSign(j.getType()));
 				cppSourceContent.add(gid);
+				cppSourceContent.add("\tif("+fieldId+"==NULL)return FALSE;");
 				System.out.println(gid);
 			}
 		}
 		List<JavaMethod> methodList=jCls.getMethodList();
 		if(methodList!=null)
 		{
-			System.out.println("protected://method");
+			//System.out.println("protected: //method");
+			cppHeaderContent.add("protected: //method");
 			//同时要检查是否有构造函数，如果没有，就使用默认构造函数
 			boolean isConstruct=false;
+			ArrayList<JavaMethod> publicMd=new ArrayList<JavaMethod>();
 			for(JavaMethod j:methodList)
 			{
 				String methodId=getMethodId(j.getName());
 				if(j.getName()==jCls.getCls())
 					isConstruct=true;
+				if(j.isPublic())
+					publicMd.add(j);
 				//id 定义
-				cppHeaderContent.add("\tjmethodID\t"+methodId);
+				cppHeaderContent.add("\tjmethodID\t"+methodId+";");
 				//得到method id
-				String gid=String.format("\t%s=_e->%s(_cls,\"%s\",\"%s\")",methodId,j.isStatic?"GetStaticMethodID":"GetMethodID",
-						methodId,getMethodCSign(j));
+				String gid=String.format("\t%s=_e->%s(_cls,\"%s\",\"%s\");",methodId,j.isStatic?"GetStaticMethodID":"GetMethodID",
+						j.getName(),getMethodCSign(j));
+				
+				cppSourceContent.add(gid);
+				cppSourceContent.add("\tif("+methodId+"==NULL)return FALSE;");
 				System.out.println(gid);
 			}
 			if(!isConstruct) {//如果没有构造函数
 				String methodId="_mInit";
-				cppHeaderContent.add("\tjmethodID\t"+methodId);
+				cppHeaderContent.add("\tjmethodID\t"+methodId+";");
 				String gid=String.format("\t%s=_e->GetMethodID(_cls,\"<init>\",\"()V\");", methodId);
+				//cppSourceContent.add("\t//增加一个默认构造函数");
+				cppSourceContent.add(gid);
+				cppSourceContent.add("\tif("+methodId+"==NULL)return FALSE;");
 				System.out.println(gid);
 			}
+			//把Public方法增加到头文件中，成为inline的Public C++方法，此部分代码只是生成代码框架，使用时需要修改，例如jstring,需要转换成const char*
+			cppHeaderContent.add("public:");
+			for(JavaMethod j:methodList)
+			{
+				String line=String.format("\tinline %s %s(", GetCppType(j.getRetType()),getMdName(j.getName()));
+				if(!j.isStatic())
+					line+="jobject obj,";
+				//把Java参数重新拼成C++参数
+				List<JavaMember> paramList=j.getParamList();
+				if(paramList!=null) {
+					for(JavaMember m:paramList)
+					{
+						line+=GetCppType(m.getType())+" "+m.getName()+",";
+					}
+				}
+				//多余的“,”删除
+				if(line.endsWith(","))
+					line=line.substring(0, line.length()-1);
+				line+="){";
+				cppHeaderContent.add(line);
+				line="\t\t";
+				if(!j.getRetType().contentEquals("void"))
+					line+="return ";
+				line+="_e->"+GetCppCallMethod(j.getRetType(),j.isStatic());
+				line+="(";
+				if(j.isStatic())
+					line+="_cls,";
+				else
+					line+="obj,";
+				line+=getMethodId(j.getName())+",";
+				//处理参数部分
+				if(paramList!=null) {
+					for(JavaMember m:j.getParamList())
+					{
+						line+=m.getName()+",";
+					}
+				}
+				//多余的“,”删除
+				line=line.substring(0, line.length()-1);
+				line+=");";
+				cppHeaderContent.add(line);
+				
+				cppHeaderContent.add("\t};");
+			}
 		}
+		cppSourceContent.add("\treturn TRUE;");
+		cppSourceContent.add("}");
+	}
+	/**
+	 * 从Java类型转成CPP类型
+	 * */
+	String GetCppType(String jType)
+	{
+		String methodType="jobject";
+		switch(jType)
+		{
+		case "void":methodType= "void";break;
+		case "boolean":methodType="BOOL";break;
+		case "Byte":methodType="unsigned short";break;
+		case "Char":methodType="short";break;
+		case "Short":methodType="Short";break;
+		case "int":methodType="int";break;
+		case "long":methodType="__int64";break;
+		case "float":methodType="float";break;
+		case "double":methodType="double";break;
+		case "String":methodType="const char*";break;
+		}
+		return methodType;
+	}
+	String GetCppCallMethod(String retType,boolean isStatic)
+	{
+		String methodType=getCppCall(retType);
+		if(isStatic)
+		{
+			return "CallStatic"+methodType+"Method";
+		}
+		return "Call"+methodType+"Method";
+	}
+	//根据Java方法返回值选择合适的JNI调用类型，使用时再拼成JNI方法
+	String getCppCall(String retType)
+	{
+		String methodType="Object";
+		switch(retType)
+		{
+		case "void":methodType= "Void";break;
+		case "boolean":methodType="Boolean";break;
+		case "Byte":methodType="Byte";break;
+		case "Char":methodType="Char";break;
+		case "Short":methodType="Short";break;
+		case "int":methodType="Int";break;
+		case "long":methodType="Long";break;
+		case "float":methodType="Float";break;
+		case "double":methodType="Double";break;
+		}
+		return methodType;
 	}
 }

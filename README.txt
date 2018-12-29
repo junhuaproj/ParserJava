@@ -27,3 +27,9 @@ antlr4
 			stream=CommonTokenStream(lexer)	#antlr4
 			parser=JavaParser(stream)
 			return parser.compilationUnit()
+			
+尝试了使用Java调用antlr4解析Java代码，工具本身就是Java开发的，另外得益于强大的Java IDE工具Eclipse 使用起来似乎更加容易。
+详情见javaparser.
+Java项目现已能较为完整的生成C++类，public的Java方法生成CPP inline时，只能生成函数框架，需要手工修改
+Java项目 jnisample是测试项目，对应JNI的C++项目为AppJNI
+在开发JNI库时必须inlcude javah生成的头文件，否则产生java.lang.UnsatisfiedLinkError
